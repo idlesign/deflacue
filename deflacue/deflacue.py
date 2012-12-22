@@ -17,6 +17,34 @@ from collections import defaultdict
 from subprocess import Popen, PIPE
 
 
+COMMENTS_VORBIS = (
+    'TITLE',
+    'VERSION',
+    'ALBUM',
+    'TRACKNUMBER',
+    'ARTIST',
+    'PERFORMER',
+    'COPYRIGHT',
+    'LICENSE',
+    'ORGANIZATION',
+    'DESCRIPTION',
+    'GENRE',
+    'DATE',
+    'LOCATION',
+    'CONTACT',
+    'ISRC'
+)
+
+COMMENTS_CUE_TO_VORBIS = {
+    'TRACK_NUM': 'TRACKNUMBER',
+    'TITLE': 'TITLE',
+    'PERFORMER': 'ARTIST',
+    'ALBUM': 'ALBUM',
+    'GENRE': 'GENRE',
+    'DATE': 'DATE',
+}
+
+
 class DeflacueError(Exception):
     """Exception type raised by deflacue."""
     pass
@@ -26,13 +54,13 @@ class CueParser(object):
     """Simple Cue Sheet file parser."""
 
     _context_global = {
-        'performer': 'Unknown',
-        'songwriter': None,
-        'title': 'Unknown',
-        'genre': 'Unknown',
-        'date': None,
-        'file': None,
-        'comment': None,
+        'PERFORMER': 'Unknown',
+        'SONGWRITER': None,
+        'ALBUM': 'Unknown',
+        'GENRE': 'Unknown',
+        'DATE': None,
+        'FILE': None,
+        'COMMENT': None,
     }
     _context_tracks = []
 
@@ -41,7 +69,7 @@ class CueParser(object):
         try:
             with open(cue_file, encoding=encoding) as f:
                 lines = f.readlines()
-        except UnicodeDecodeError as e:
+        except UnicodeDecodeError:
             raise DeflacueError('Unable to read data from .cue file. Please use -encoding command line argument to set correct encoding.')
 
         for line in lines:
@@ -57,10 +85,10 @@ class CueParser(object):
         for idx, track_data in enumerate(self._context_tracks):
             track_end_pos = None
             try:
-                track_end_pos = self._context_tracks[idx + 1]['pos_start']
+                track_end_pos = self._context_tracks[idx + 1]['POS_START']
             except IndexError:
                 pass
-            track_data['pos_end'] = track_end_pos
+            track_data['POS_END'] = track_end_pos
 
     def get_data_global(self):
         """Returns a dictionary with global CD data."""
@@ -88,35 +116,43 @@ class CueParser(object):
             seconds += int(chunk) * factor
         return seconds
 
+    def _in_global_context(self):
+        return self._current_context == self._context_global
+
     def cmd_rem(self, args):
         subcommand, subargs = args.split(' ', 1)
         if subargs.startswith('"'):
             subargs = self._unquote(subargs)
-        self._current_context[subcommand.lower()] = subargs
+        self._current_context[subcommand.upper()] = subargs
 
     def cmd_performer(self, args):
-        self._current_context['performer'] = self._unquote(args)
+        unquoted = self._unquote(args)
+        self._current_context['PERFORMER'] = unquoted
 
     def cmd_title(self, args):
-        self._current_context['title'] = self._unquote(args)
+        unquoted = self._unquote(args)
+        if self._in_global_context():
+            self._current_context['ALBUM'] = unquoted
+        else:
+            self._current_context['TITLE'] = unquoted
 
     def cmd_file(self, args):
         filename = self._unquote(args.rsplit(' ', 1)[0])
         if not os.path.exists(filename):
             raise DeflacueError('Source file `%s` is not found' % filename)
-        self._current_context['file'] = filename
+        self._current_context['FILE'] = filename
 
     def cmd_index(self, args):
         timestr = args.split()[1]
-        self._current_context['index'] = timestr
-        self._current_context['pos_start'] = self._timestr_to_sec(timestr)
+        self._current_context['INDEX'] = timestr
+        self._current_context['POS_START'] = self._timestr_to_sec(timestr)
 
     def cmd_track(self, args):
         num, ttype = args.split()
         new_track_context = deepcopy(self._context_global)
         self._context_tracks.append(new_track_context)
         self._current_context = new_track_context
-        self._current_context['track_num'] = int(num)
+        self._current_context['TRACK_NUM'] = int(num)
 
     def cmd_flags(self, args):
         pass
@@ -131,8 +167,8 @@ class Deflacue(object):
 
     This will search `/home/idle/cues_to_process/` and subdirectories
     for .cue files, parse them and extract separate tracks.
-    Extracted tracks are stored in a directory named after Album name
-    (CD Title) within `deflacue` directory under each of source directories.
+    Extracted tracks are stored in Artist - Album hierarchy within
+    `deflacue` directory under each source directory.
 
     """
 
@@ -245,11 +281,18 @@ class Deflacue(object):
 
     def sox_extract_audio(self, source_file, pos_start, pos_end, target_file, metadata=None):
         """Using SoX extracts a chunk from source audio file into target."""
-        logging.info('Extracting %s ...' % target_file)
+        logging.info('Extracting `%s` ...' % os.path.basename(target_file))
 
         chunk_length = ''
         if pos_end is not None:
             chunk_length = pos_end - pos_start
+
+        add_comment = ''
+        if metadata is not None:
+            logging.debug('Metadata: %s\n' % metadata)
+            for key, val in COMMENTS_CUE_TO_VORBIS.items():
+                if key in metadata and metadata[key] is not None:
+                    add_comment = '--add-comment="%s=%s" %s' % (val, metadata[key], add_comment)
 
         logging.debug('Extraction information:\n'
                      '      Source file: %(source)s\n'
@@ -258,31 +301,31 @@ class Deflacue(object):
                      '      Length: %(length)s second(s)' %
                      {'source': source_file, 'pos_start': pos_start, 'pos_end': pos_end, 'length': chunk_length})
 
-        command = 'sox -V1 "%(source)s" "%(target)s" trim %(start_pos)s %(length)s --comment=""' % {
-            'source': source_file, 'target': target_file, 'start_pos': pos_start, 'length': chunk_length}
+        command = 'sox -V1 "%(source)s" --comment="" %(add_comment)s "%(target)s" trim %(start_pos)s %(length)s' % {
+            'source': source_file, 'target': target_file, 'start_pos': pos_start, 'length': chunk_length,
+            'add_comment': add_comment}
 
         if not self._dry_run:
             self._process_command(command, PIPE)
-        logging.info('Extracted.\n')
 
     def process_cue(self, cue_file, target_path):
         """Parses .cue file, extracts separate tracks."""
-        logging.info('Processing %s' % cue_file)
+        logging.info('Processing `%s`\n' % os.path.basename(cue_file))
         parser = CueParser(cue_file, encoding=self.encoding)
         cd_info = parser.get_data_global()
         tracks = parser.get_data_tracks()
 
-        title = cd_info['title']
-        if cd_info['date'] is not None:
-            title = '%s - %s' % (cd_info['date'], title)
-        bundle_path = os.path.join(target_path, title)
+        title = cd_info['ALBUM']
+        if cd_info['DATE'] is not None:
+            title = '%s - %s' % (cd_info['DATE'], title)
+        bundle_path = os.path.join(target_path, cd_info['PERFORMER'], title)
         self._create_target_path(bundle_path)
 
         tracks_count = len(tracks)
         for track in tracks:
-            track_num = str(track['track_num']).rjust(len(str(tracks_count)), '0')
-            filename = '%s - %s.flac' % (track_num, track['title'].replace('/', ''))
-            self.sox_extract_audio(track['file'], track['pos_start'], track['pos_end'], os.path.join(bundle_path, filename))
+            track_num = str(track['TRACK_NUM']).rjust(len(str(tracks_count)), '0')
+            filename = '%s - %s.flac' % (track_num, track['TITLE'].replace('/', ''))
+            self.sox_extract_audio(track['FILE'], track['POS_START'], track['POS_END'], os.path.join(bundle_path, filename), metadata=track)
 
     def do(self, recursive=False):
         """Main method processing .cue files in batch."""
@@ -314,7 +357,7 @@ class Deflacue(object):
 
         os.chdir(dir_initial)
 
-        logging.info('We are done again now. Thank you.\n')
+        logging.info('We are done. Thank you.\n')
 
 
 if __name__ == '__main__':
