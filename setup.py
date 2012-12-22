@@ -9,7 +9,7 @@ f.close()
 setup(
     name='deflacue',
     version=".".join(map(str, VERSION)),
-    description='',
+    description='deflacue is a SoX based audio splitter to split audio CD images incorporated with .cue files',
     long_description=readme,
     author="Igor 'idle sign' Starikov",
     author_email='idlesign@yandex.ru',
