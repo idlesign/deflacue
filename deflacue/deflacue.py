@@ -53,18 +53,18 @@ class DeflacueError(Exception):
 class CueParser(object):
     """Simple Cue Sheet file parser."""
 
-    _context_global = {
-        'PERFORMER': 'Unknown',
-        'SONGWRITER': None,
-        'ALBUM': 'Unknown',
-        'GENRE': 'Unknown',
-        'DATE': None,
-        'FILE': None,
-        'COMMENT': None,
-    }
-    _context_tracks = []
-
     def __init__(self, cue_file, encoding=None):
+        self._context_global = {
+            'PERFORMER': 'Unknown',
+            'SONGWRITER': None,
+            'ALBUM': 'Unknown',
+            'GENRE': 'Unknown',
+            'DATE': None,
+            'FILE': None,
+            'COMMENT': None,
+            }
+        self._context_tracks = []
+
         self._current_context = self._context_global
         try:
             with open(cue_file, encoding=encoding) as f:
@@ -138,8 +138,6 @@ class CueParser(object):
 
     def cmd_file(self, args):
         filename = self._unquote(args.rsplit(' ', 1)[0])
-        if not os.path.exists(filename):
-            raise DeflacueError('Source file `%s` is not found' % filename)
         self._current_context['FILE'] = filename
 
     def cmd_index(self, args):
@@ -203,7 +201,7 @@ class Deflacue(object):
 
         logging.info('Source path: %s' % self.path_source)
         if not os.path.exists(self.path_source):
-            raise DeflacueError('Path "%s" is not found.' % self.path_source)
+            raise DeflacueError('Path `%s` is not found.' % self.path_source)
 
         if dest_path is not None:
             self.path_target = os.path.abspath(dest_path)
@@ -232,7 +230,7 @@ class Deflacue(object):
             try:
                 os.makedirs(path)
             except OSError:
-                raise DeflacueError('Unable to create target path: %s' % path)
+                raise DeflacueError('Unable to create target path: %s.' % path)
 
     def set_dry_run(self):
         """Sets deflacue into dry run mode, when all requested actions
@@ -313,6 +311,11 @@ class Deflacue(object):
         logging.info('Processing `%s`\n' % os.path.basename(cue_file))
         parser = CueParser(cue_file, encoding=self.encoding)
         cd_info = parser.get_data_global()
+
+        if not os.path.exists(cd_info['FILE']):
+            logging.error('Source file `%s` is not found. Cue Sheet is skipped.' % cd_info['FILE'])
+            return
+
         tracks = parser.get_data_tracks()
 
         title = cd_info['ALBUM']
@@ -338,7 +341,7 @@ class Deflacue(object):
         paths = sorted(files_dict.keys())
         for path in paths:
             os.chdir(path)
-            logging.info('%s\n      Working on: %s\n' % ('====' * 10, path))
+            logging.info('\n%s\n      Working on: %s\n' % ('====' * 10, path))
 
             if self.path_target is None:
                 # When a target path is not specified, create `deflacue` subdirectory
