@@ -364,10 +364,10 @@ if __name__ == '__main__':
 
     argparser = argparse.ArgumentParser('deflacue.py')
 
-    argparser.add_argument('source_path', help='Absolute or relative (to the current) source path of input .cue file(s).')
+    argparser.add_argument('source_path', help='Absolute or relative source path with .cue file(s).')
     argparser.add_argument('-r', help='Recursion flag to search directories under the source_path.', action='store_true')
-    argparser.add_argument('-d', help='Absolute or relative (to the current) destination path for output audio file(s).')
-    argparser.add_argument('-e', help='.cue file(s) encoding.')
+    argparser.add_argument('-d', help='Absolute or relative destination path for output audio file(s).')
+    argparser.add_argument('-e', help='Cue Sheet file(s) encoding.')
     argparser.add_argument('-dry', help='Perform the dry run with no changes done to filesystem.', action='store_true')
     argparser.add_argument('-debug', help='Show debug messages while processing.', action='store_true')
 
