@@ -243,7 +243,7 @@ class Deflacue(object):
         result = self._process_command('sox -h', PIPE, supress_dry_run=True)
         return result[0] == 0
 
-    def sox_extract_audio(self, source_file, pos_start, pos_end, target_file):
+    def sox_extract_audio(self, source_file, pos_start, pos_end, target_file, metadata=None):
         """Using SoX extracts a chunk from source audio file into target."""
         logging.info('Extracting %s ...' % target_file)
 
@@ -258,7 +258,7 @@ class Deflacue(object):
                      '      Length: %(length)s second(s)' %
                      {'source': source_file, 'pos_start': pos_start, 'pos_end': pos_end, 'length': chunk_length})
 
-        command = 'sox -V1 "%(source)s" "%(target)s" trim %(start_pos)s %(length)s' % {
+        command = 'sox -V1 "%(source)s" "%(target)s" trim %(start_pos)s %(length)s --comment=""' % {
             'source': source_file, 'target': target_file, 'start_pos': pos_start, 'length': chunk_length}
 
         if not self._dry_run:
@@ -272,11 +272,13 @@ class Deflacue(object):
         cd_info = parser.get_data_global()
         tracks = parser.get_data_tracks()
 
-        bundle_path = os.path.join(target_path, cd_info['title'])
+        title = cd_info['title']
+        if cd_info['date'] is not None:
+            title = '%s - %s' % (cd_info['date'], title)
+        bundle_path = os.path.join(target_path, title)
         self._create_target_path(bundle_path)
 
         tracks_count = len(tracks)
-        print(tracks_count)
         for track in tracks:
             track_num = str(track['track_num']).rjust(len(str(tracks_count)), '0')
             filename = '%s - %s.flac' % (track_num, track['title'].replace('/', ''))
