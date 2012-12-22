@@ -279,7 +279,7 @@ class Deflacue(object):
         print(tracks_count)
         for track in tracks:
             track_num = str(track['track_num']).rjust(len(str(tracks_count)), '0')
-            filename = '%s - %s.flac' % (track_num, track['title'])
+            filename = '%s - %s.flac' % (track_num, track['title'].replace('/', ''))
             self.sox_extract_audio(track['file'], track['pos_start'], track['pos_end'], os.path.join(bundle_path, filename))
 
     def do(self, recursive=False):
