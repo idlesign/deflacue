@@ -16,7 +16,6 @@ setup(
     url='http://github.com/idlesign/deflacue',
     packages=['deflacue'],
     include_package_data=True,
-    install_requires=['setuptools'],
     zip_safe=False,
     classifiers=[
         'Development Status :: 4 - Beta',
