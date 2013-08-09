@@ -2,6 +2,9 @@ deflacue
 ========
 http://github.com/idlesign/deflacue
 
+.. image:: https://pypip.in/d/deflacue/badge.png
+        :target: https://crate.io/packages/deflacue
+
 
 What's that
 -----------
