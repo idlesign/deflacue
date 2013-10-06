@@ -85,10 +85,10 @@ class CueParser(object):
         for idx, track_data in enumerate(self._context_tracks):
             track_end_pos = None
             try:
-                track_end_pos = self._context_tracks[idx + 1]['POS_START']
+                track_end_pos = self._context_tracks[idx + 1]['POS_START_SAMPLES']
             except IndexError:
                 pass
-            track_data['POS_END'] = track_end_pos
+            track_data['POS_END_SAMPLES'] = track_end_pos
 
     def get_data_global(self):
         """Returns a dictionary with global CD data."""
@@ -115,6 +115,16 @@ class CueParser(object):
                 factor = 1
             seconds += int(chunk) * factor
         return seconds
+
+    def _timestr_to_samples(self, timestr):
+        """Converts `mm:ss:ff` time string into samples integer, assuming the
+        CD sampling rate of 44100Hz."""
+        seconds_factor = 44100
+        # 75 frames per second of audio
+        frames_factor = seconds_factor // 75
+        full_seconds = self._timestr_to_sec(timestr)
+        frames = int(timestr.split(':')[-1])
+        return full_seconds * seconds_factor + frames * frames_factor
 
     def _in_global_context(self):
         return self._current_context == self._context_global
@@ -143,7 +153,7 @@ class CueParser(object):
     def cmd_index(self, args):
         timestr = args.split()[1]
         self._current_context['INDEX'] = timestr
-        self._current_context['POS_START'] = self._timestr_to_sec(timestr)
+        self._current_context['POS_START_SAMPLES'] = self._timestr_to_samples(timestr)
 
     def cmd_track(self, args):
         num, ttype = args.split()
@@ -277,13 +287,13 @@ class Deflacue(object):
         result = self._process_command('sox -h', PIPE, supress_dry_run=True)
         return result[0] == 0
 
-    def sox_extract_audio(self, source_file, pos_start, pos_end, target_file, metadata=None):
+    def sox_extract_audio(self, source_file, pos_start_samples, pos_end_samples, target_file, metadata=None):
         """Using SoX extracts a chunk from source audio file into target."""
         logging.info('Extracting `%s` ...' % os.path.basename(target_file))
 
-        chunk_length = ''
-        if pos_end is not None:
-            chunk_length = pos_end - pos_start
+        chunk_length_samples = ''
+        if pos_end_samples is not None:
+            chunk_length_samples = "%ss" % (pos_end_samples - pos_start_samples)
 
         add_comment = ''
         if metadata is not None:
@@ -294,13 +304,13 @@ class Deflacue(object):
 
         logging.debug('Extraction information:\n'
                      '      Source file: %(source)s\n'
-                     '      Start position: %(pos_start)s\n'
-                     '      End position: %(pos_end)s\n'
-                     '      Length: %(length)s second(s)' %
-                     {'source': source_file, 'pos_start': pos_start, 'pos_end': pos_end, 'length': chunk_length})
+                     '      Start position: %(pos_start)s samples\n'
+                     '      End position: %(pos_end)s samples\n'
+                     '      Length: %(length)s sample(s)' %
+                     {'source': source_file, 'pos_start': pos_start_samples, 'pos_end': pos_end_samples, 'length': chunk_length_samples})
 
-        command = 'sox -V1 "%(source)s" --comment="" %(add_comment)s "%(target)s" trim %(start_pos)s %(length)s' % {
-            'source': source_file, 'target': target_file, 'start_pos': pos_start, 'length': chunk_length,
+        command = 'sox -V1 "%(source)s" --comment="" %(add_comment)s "%(target)s" trim %(start_pos)ss %(length)s' % {
+            'source': source_file, 'target': target_file, 'start_pos': pos_start_samples, 'length': chunk_length_samples,
             'add_comment': add_comment}
 
         if not self._dry_run:
@@ -328,7 +338,7 @@ class Deflacue(object):
         for track in tracks:
             track_num = str(track['TRACK_NUM']).rjust(len(str(tracks_count)), '0')
             filename = '%s - %s.flac' % (track_num, track['TITLE'].replace('/', ''))
-            self.sox_extract_audio(track['FILE'], track['POS_START'], track['POS_END'], os.path.join(bundle_path, filename), metadata=track)
+            self.sox_extract_audio(track['FILE'], track['POS_START_SAMPLES'], track['POS_END_SAMPLES'], os.path.join(bundle_path, filename), metadata=track)
 
     def do(self, recursive=False):
         """Main method processing .cue files in batch."""
