@@ -47,3 +47,8 @@ stored under /home/idle/audio_raw/ processing Cue Sheet files created using wind
 
 Please keep in mind that `./deflacue.py` syntax used above supposes that Python 3.2+ is set as system default
 Python interpreter. Otherwise you might want to run deflacue with `python3 deflacue.py`.
+
+
+
+.. image:: https://d2weczhvl823v0.cloudfront.net/idlesign/deflacue/trend.png
+        :target: https://bitdeli.com/free
