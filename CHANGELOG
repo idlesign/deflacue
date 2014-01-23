@@ -1,0 +1,19 @@
+deflacue changelog
+==================
+
+
+v0.3.0
+------
++ Added Py2 support.
++ Now installed into /usr/local/bin/ as deflacue
+* Buggy -dry and -debug args renamed into --dry and --debug
+
+
+v0.2.0
+------
++ Now splitting tracks with a frame precision.
+
+
+v0.1.0
+------
++ Basic functionality.
