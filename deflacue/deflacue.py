@@ -12,6 +12,7 @@ import os
 import logging
 import argparse
 
+from io import open  # Py2 support
 from copy import deepcopy
 from collections import defaultdict
 from subprocess import Popen, PIPE
@@ -47,7 +48,6 @@ COMMENTS_CUE_TO_VORBIS = {
 
 class DeflacueError(Exception):
     """Exception type raised by deflacue."""
-    pass
 
 
 class CueParser(object):
@@ -331,6 +331,12 @@ class Deflacue(object):
         title = cd_info['ALBUM']
         if cd_info['DATE'] is not None:
             title = '%s - %s' % (cd_info['DATE'], title)
+
+        try:  # Py2 support
+            target_path = target_path.decode('utf-8')
+        except AttributeError:
+            pass
+
         bundle_path = os.path.join(target_path, cd_info['PERFORMER'], title)
         self._create_target_path(bundle_path)
 
@@ -373,7 +379,7 @@ class Deflacue(object):
         logging.info('We are done. Thank you.\n')
 
 
-if __name__ == '__main__':
+def main():
 
     argparser = argparse.ArgumentParser('deflacue.py')
 
@@ -381,8 +387,8 @@ if __name__ == '__main__':
     argparser.add_argument('-r', help='Recursion flag to search directories under the source_path.', action='store_true')
     argparser.add_argument('-d', help='Absolute or relative destination path for output audio file(s).')
     argparser.add_argument('-e', help='Cue Sheet file(s) encoding.')
-    argparser.add_argument('-dry', help='Perform the dry run with no changes done to filesystem.', action='store_true')
-    argparser.add_argument('-debug', help='Show debug messages while processing.', action='store_true')
+    argparser.add_argument('--dry', help='Perform the dry run with no changes done to filesystem.', action='store_true')
+    argparser.add_argument('--debug', help='Show debug messages while processing.', action='store_true')
 
     parsed = argparser.parse_args()
     kwargs = {'source_path': parsed.source_path}
@@ -408,3 +414,7 @@ if __name__ == '__main__':
         deflacue.do(parsed.r)
     except DeflacueError as e:
         logging.error(e)
+
+
+if __name__ == '__main__':
+    main()
