@@ -1,3 +1,9 @@
-include README.rst
+include CHANGELOG
 include LICENSE
 include AUTHORS
+include README.rst
+
+include bin/letmehear
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
