@@ -42,8 +42,3 @@ In the following example we create audio collection in /home/idle/audio_collecti
 stored under /home/idle/audio_raw/ processing Cue Sheet files created using windows-1251 encoding::
 
     deflacue -e windows-1251 /home/idle/audio_raw/ -d /home/idle/audio_collection/
-
-
-
-.. image:: https://d2weczhvl823v0.cloudfront.net/idlesign/deflacue/trend.png
-        :target: https://bitdeli.com/free

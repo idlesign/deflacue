@@ -17,7 +17,7 @@ setup(
     long_description=README,
     license='BSD 3-Clause License',
 
-    author="Igor 'idle sign' Starikov",
+    author='Igor `idle sign` Starikov',
     author_email='idlesign@yandex.ru',
 
     packages=['deflacue'],
@@ -27,7 +27,7 @@ setup(
     scripts=['bin/deflacue'],
 
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Console',
         'Intended Audience :: End Users/Desktop',
         'License :: OSI Approved :: BSD License',
