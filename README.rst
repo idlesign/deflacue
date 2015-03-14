@@ -5,6 +5,9 @@ http://github.com/idlesign/deflacue
 .. image:: https://pypip.in/d/deflacue/badge.png
         :target: https://crate.io/packages/deflacue
 
+.. image:: https://landscape.io/github/idlesign/deflacue/master/landscape.svg?style=plastic
+   :target: https://landscape.io/github/idlesign/deflacue/master
+
 
 What's that
 -----------
