@@ -1,3 +1,4 @@
+import logging
 from collections import deque
 
 import pytest
@@ -123,7 +124,9 @@ def sox_mock(monkeypatch):
 
 class TestDeflacue:
 
-    def test_basic(self, datafix_dir, sox_mock, tmp_path):
+    def test_basic(self, datafix_dir, sox_mock, tmp_path, caplog):
+
+        caplog.set_level(logging.INFO, logger='deflacue')
 
         dest = tmp_path / 'sub'
 
@@ -142,3 +145,4 @@ class TestDeflacue:
         assert len(commands) == 6
 
         assert (dest / 'datafixtures' / 'В. С. Высоцкий' / '2020 - Пять песен').exists()
+        assert 'Extracting `5 - 05. История болезни.flac`' in caplog.text

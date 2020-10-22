@@ -11,10 +11,12 @@ import logging
 import os
 from collections import defaultdict
 from copy import deepcopy
+from pathlib import Path
 from subprocess import Popen, PIPE
-from typing import List, Dict
+from typing import List, Dict, Union, Optional
 
 LOGGER = logging.getLogger('deflacue')
+TypePath = Union[str, Path]
 
 """
 COMMENTS_VORBIS = (
@@ -53,7 +55,7 @@ class DeflacueError(Exception):
 class CueParser:
     """Simple Cue Sheet file parser."""
 
-    def __init__(self, cue_file: str, *, encoding: str = None):
+    def __init__(self, cue_file: Path, *, encoding: str = None):
         """
 
         :param cue_file: .cue filepath
@@ -74,7 +76,7 @@ class CueParser:
         self._current_context = self._context_global
 
         try:
-            with open(cue_file, encoding=encoding) as f:
+            with open(str(cue_file), encoding=encoding) as f:
                 lines = f.readlines()
 
         except UnicodeDecodeError:
@@ -202,9 +204,9 @@ class Deflacue:
 
     def __init__(
         self,
-        source_path: str,
+        source_path: TypePath,
         *,
-        dest_path: str = None,
+        dest_path: TypePath = None,
         encoding: str = None,
         use_logging: int = logging.INFO
     ):
@@ -224,9 +226,9 @@ class Deflacue:
             Examples: logging.INFO, logging.DEBUG.
 
         """
-        src = os.path.abspath(source_path)
-        self.path_source = src
-        self.path_target = dest_path
+        src = Path(source_path).absolute()
+        self.path_source: Path = src
+        self.path_target: Optional[Path] = dest_path
         self.encoding = encoding
 
         if use_logging:
@@ -234,11 +236,11 @@ class Deflacue:
 
         LOGGER.info(f'Source path: {src}')
 
-        if not os.path.exists(src):
+        if not src.exists():
             raise DeflacueError(f'Path `{src}` is not found.')
 
         if dest_path is not None:
-            self.path_target = os.path.abspath(dest_path)
+            self.path_target = Path(dest_path).absolute()
             os.chdir(src)
 
     def _process_command(
@@ -266,9 +268,9 @@ class Deflacue:
         """Switches on logging at given level."""
         logging.basicConfig(level=verbosity_lvl, format='%(levelname)s: %(message)s')
 
-    def _create_target_path(self, path: str):
+    def _create_target_path(self, path: Optional[Path]):
         """Creates a directory for target files."""
-        if self._dry_run:
+        if self._dry_run or not path:
             return
 
         LOGGER.debug(f'Creating target path: {path} ...')
@@ -281,10 +283,10 @@ class Deflacue:
         """
         self._dry_run = True
 
-    def get_dir_files(self, *, recursive: bool = False) -> Dict[str, List[str]]:
+    def get_dir_files(self, *, recursive: bool = False) -> Dict[Path, List[Path]]:
         """Creates and returns dictionary of files in source directory.
 
-        :param recursive: if True .cue search is also performed within subdirectories.
+        :param recursive: if True search is also performed within subdirectories.
 
         """
         LOGGER.info(f'Enumerating files under the source path (recursive={recursive}) ...')
@@ -292,19 +294,20 @@ class Deflacue:
         files = {}
         if recursive:
             for current_dir, _, dir_files in os.walk(self.path_source):
-                files[os.path.join(self.path_source, current_dir)] = [f for f in dir_files]
+                path = self.path_source / current_dir
+                files[path] = [path / f for f in dir_files]
 
         else:
             files[self.path_source] = [
-                f for f in os.listdir(self.path_source)
-                if os.path.isfile(os.path.join(self.path_source, f))
+                f for f in self.path_source.iterdir()
+                if f.is_file()
             ]
 
         return files
 
-    def filter_target_extensions(self, files_dict: Dict[str, List[str]]) -> Dict[str, List[str]]:
+    def filter_target_extensions(self, files_dict: Dict[Path, List[Path]]) -> Dict[Path, List[Path]]:
         """Takes file dictionary created with `get_dir_files` and returns
-        dictionary of the same kind containing only audio files of supported
+        dictionary of the same kind containing only files of supported
         types.
 
         :param files_dict:
@@ -316,12 +319,11 @@ class Deflacue:
 
         for path in paths:
 
-            if path.endswith('deflacue'):
+            if path.name == 'deflacue':
                 continue
 
-            files = sorted(files_dict[path])
-            for f in files:
-                if os.path.splitext(f)[1] == '.cue':
+            for f in sorted(files_dict[path]):
+                if f.suffix == '.cue':
                     files_filtered[path].append(f)
 
         return files_filtered
@@ -334,10 +336,10 @@ class Deflacue:
     def sox_extract_audio(
         self,
         *,
-        source_file: str,
+        source_file: Path,
         pos_start_samples: int,
         pos_end_samples: int,
-        target_file: str,
+        target_file: Path,
         metadata: Dict[str, str] = None
     ):
         """Using SoX extracts a chunk from source audio file into target.
@@ -353,7 +355,7 @@ class Deflacue:
         :param metadata: Additional data (tags) dict.
 
         """
-        LOGGER.info(f'Extracting `{os.path.basename(target_file)}` ...')
+        LOGGER.info(f'Extracting `{target_file.name}` ...')
 
         chunk_length_samples = ''
         if pos_end_samples is not None:
@@ -383,14 +385,15 @@ class Deflacue:
 
         self._process_command(command, stdout=PIPE)
 
-    def process_cue(self, cue_file: str, target_path: str):
+    def process_cue(self, cue_file: Path, target_path: Path):
         """Parses .cue file, extracts separate tracks.
 
         :param cue_file: .cue filepath
+
         :param target_path: path to place files into
 
         """
-        LOGGER.info(f'Processing `{os.path.basename(cue_file)}`\n')
+        LOGGER.info(f'Processing `{cue_file.name}`\n')
 
         parser = CueParser(cue_file, encoding=self.encoding)
         cd_info = parser.get_data_global()
@@ -405,7 +408,7 @@ class Deflacue:
         if cd_info['DATE'] is not None:
             title = f"{cd_info['DATE']} - {title}"
 
-        bundle_path = os.path.join(target_path, cd_info['PERFORMER'], title)
+        bundle_path = target_path / cd_info['PERFORMER'] / title
         self._create_target_path(bundle_path)
 
         tracks_count = len(tracks)
@@ -418,7 +421,7 @@ class Deflacue:
                 source_file=track['FILE'],
                 pos_start_samples=track['POS_START_SAMPLES'],
                 pos_end_samples=track['POS_END_SAMPLES'],
-                target_file=os.path.join(bundle_path, filename),
+                target_file=bundle_path / filename,
                 metadata=track
             )
 
@@ -428,8 +431,7 @@ class Deflacue:
         :param recursive: if True .cue search is also performed within subdirectories.
 
         """
-        if self.path_target is not None:
-            self._create_target_path(self.path_target)
+        self._create_target_path(self.path_target)
 
         files_dict = self.filter_target_extensions(self.get_dir_files(recursive=recursive))
 
@@ -444,18 +446,18 @@ class Deflacue:
             if self.path_target is None:
                 # When a target path is not specified, create `deflacue` subdirectory
                 # in every directory we are working at.
-                target_path = os.path.join(path, 'deflacue')
+                target_path = path / 'deflacue'
 
             else:
                 # When a target path is specified, we create a subdirectory there
                 # named after the directory we are working on.
-                target_path = os.path.join(self.path_target, os.path.split(path)[1])
+                target_path = self.path_target / path.name
 
             self._create_target_path(target_path)
             LOGGER.info(f'Target (output) path: {target_path}')
 
             for cue in files_dict[path]:
-                self.process_cue(os.path.join(path, cue), target_path)
+                self.process_cue(path / cue, target_path)
 
         os.chdir(dir_initial)
 
