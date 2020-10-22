@@ -2,14 +2,19 @@ deflacue
 ========
 http://github.com/idlesign/deflacue
 
-.. image:: https://img.shields.io/pypi/v/deflacue.svg
+|release| |lic| |ci| |coverage|
+
+.. |release| image:: https://img.shields.io/pypi/v/deflacue.svg
     :target: https://pypi.python.org/pypi/deflacue
 
-.. image:: https://img.shields.io/pypi/dm/deflacue.svg
+.. |lic| image:: https://img.shields.io/pypi/l/deflacue.svg
     :target: https://pypi.python.org/pypi/deflacue
 
-.. image:: https://img.shields.io/pypi/l/deflacue.svg
-    :target: https://pypi.python.org/pypi/deflacue
+.. |ci| image:: https://img.shields.io/travis/idlesign/deflacue/master.svg
+    :target: https://travis-ci.org/idlesign/deflacue
+
+.. |coverage| image:: https://img.shields.io/coveralls/idlesign/deflacue/master.svg
+    :target: https://coveralls.io/r/idlesign/deflacue
 
 
 What's that
