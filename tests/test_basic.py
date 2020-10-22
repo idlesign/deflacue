@@ -111,9 +111,9 @@ def sox_mock(monkeypatch):
             self.commands = []
             self.results = deque()
 
-        def process_command(self, command, stdout=None, supress_dry_run=False):
+        def process_command(self, command, **kwargs):
             self.commands.append(command)
-            return 0, ['', '']
+            return 0
 
     mock = SoxMock()
     monkeypatch.setattr('deflacue.deflacue.Deflacue._process_command', mock.process_command)

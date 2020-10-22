@@ -4,6 +4,7 @@ deflacue changelog
 
 Unreleased
 ----------
+! IMPORTANT: API changes (keyword-only args introduced).
 * Drop support for Py2 (3.6+ supported).
 
 
