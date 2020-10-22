@@ -201,6 +201,7 @@ class Deflacue:
 
     """
     _dry_run = False  # Some lengthy shell command won't be executed on dry run.
+    _target_default = 'deflacue'
 
     def __init__(
         self,
@@ -319,7 +320,7 @@ class Deflacue:
 
         for path in paths:
 
-            if path.name == 'deflacue':
+            if path.name == self._target_default:
                 continue
 
             for f in sorted(files_dict[path]):
@@ -446,7 +447,7 @@ class Deflacue:
             if self.path_target is None:
                 # When a target path is not specified, create `deflacue` subdirectory
                 # in every directory we are working at.
-                target_path = path / 'deflacue'
+                target_path = path / self._target_default
 
             else:
                 # When a target path is specified, we create a subdirectory there
