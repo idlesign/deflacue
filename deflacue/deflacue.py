@@ -14,6 +14,7 @@ from copy import deepcopy
 from subprocess import Popen, PIPE
 from typing import List, Dict
 
+LOGGER = logging.getLogger('deflacue')
 
 COMMENTS_VORBIS = (
     'TITLE',
@@ -88,12 +89,12 @@ class CueParser:
 
             command, _, args = line.partition(' ')
 
-            logging.debug(f'Command `{command}`. Args: {args}')
+            LOGGER.debug(f'Command `{command}`. Args: {args}')
 
             method = getattr(self, f'cmd_{command.lower()}', None)
 
             if method is None:
-                logging.warning(f'Unknown command `{command}`. Skipping ...')
+                LOGGER.warning(f'Unknown command `{command}`. Skipping ...')
 
             else:
                 method(self._unquote(args))
@@ -229,7 +230,7 @@ class Deflacue:
         if use_logging:
             self._configure_logging(use_logging)
 
-        logging.info(f'Source path: {src}')
+        LOGGER.info(f'Source path: {src}')
 
         if not os.path.exists(src):
             raise DeflacueError(f'Path `{src}` is not found.')
@@ -249,7 +250,7 @@ class Deflacue:
         Returns status code.
 
         """
-        logging.debug(f'Executing shell command: {command}')
+        LOGGER.debug(f'Executing shell command: {command}')
 
         if not self._dry_run or suppress_dry_run:
             prc = Popen(command, shell=True, stdout=stdout)
@@ -266,7 +267,7 @@ class Deflacue:
     def _create_target_path(self, path: str):
         """Creates a directory for target files."""
         if not self._dry_run:
-            logging.debug(f'Creating target path: {path} ...')
+            LOGGER.debug(f'Creating target path: {path} ...')
             os.makedirs(path, exist_ok=True)
 
     def set_dry_run(self):
@@ -282,7 +283,7 @@ class Deflacue:
         :param recursive: if True .cue search is also performed within subdirectories.
 
         """
-        logging.info(f'Enumerating files under the source path (recursive={recursive}) ...')
+        LOGGER.info(f'Enumerating files under the source path (recursive={recursive}) ...')
 
         files = {}
         if recursive:
@@ -306,7 +307,7 @@ class Deflacue:
 
         """
         files_filtered = defaultdict(list)
-        logging.info('Filtering .cue files ...')
+        LOGGER.info('Filtering .cue files ...')
         paths = files_dict.keys()
 
         for path in paths:
@@ -348,7 +349,7 @@ class Deflacue:
         :param metadata: Additional data (tags) dict.
 
         """
-        logging.info(f'Extracting `{os.path.basename(target_file)}` ...')
+        LOGGER.info(f'Extracting `{os.path.basename(target_file)}` ...')
 
         chunk_length_samples = ''
         if pos_end_samples is not None:
@@ -356,13 +357,13 @@ class Deflacue:
 
         add_comment = ''
         if metadata is not None:
-            logging.debug(f'Metadata: {metadata}\n')
+            LOGGER.debug(f'Metadata: {metadata}\n')
 
             for key, val in COMMENTS_CUE_TO_VORBIS.items():
                 if key in metadata and metadata[key] is not None:
                     add_comment = f'--add-comment="{val}={metadata[key]}" {add_comment}'
 
-        logging.debug(
+        LOGGER.debug(
             'Extraction information:\n'
             f'      Source file: {source_file}\n'
             f'      Start position: {pos_start_samples} samples\n'
@@ -385,13 +386,13 @@ class Deflacue:
         :param target_path: path to place files into
 
         """
-        logging.info(f'Processing `{os.path.basename(cue_file)}`\n')
+        LOGGER.info(f'Processing `{os.path.basename(cue_file)}`\n')
 
         parser = CueParser(cue_file, encoding=self.encoding)
         cd_info = parser.get_data_global()
 
         if not os.path.exists(cd_info['FILE']):
-            logging.error(f"Source file `{cd_info['FILE']}` is not found. Cue Sheet is skipped.")
+            LOGGER.error(f"Source file `{cd_info['FILE']}` is not found. Cue Sheet is skipped.")
             return
 
         tracks = parser.get_data_tracks()
@@ -434,7 +435,7 @@ class Deflacue:
         for path in paths:
             os.chdir(path)
 
-            logging.info(f"\n{'====' * 10}\n      Working on: {path}\n")
+            LOGGER.info(f"\n{'====' * 10}\n      Working on: {path}\n")
 
             if self.path_target is None:
                 # When a target path is not specified, create `deflacue` subdirectory
@@ -447,11 +448,11 @@ class Deflacue:
                 target_path = os.path.join(self.path_target, os.path.split(path)[1])
 
             self._create_target_path(target_path)
-            logging.info(f'Target (output) path: {target_path}')
+            LOGGER.info(f'Target (output) path: {target_path}')
 
             for cue in files_dict[path]:
                 self.process_cue(os.path.join(path, cue), target_path)
 
         os.chdir(dir_initial)
 
-        logging.info('We are done. Thank you.\n')
+        LOGGER.info('We are done. Thank you.\n')
