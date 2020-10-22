@@ -1,16 +1,14 @@
-#!/usr/bin/env python
 """
 deflacue is a Cue Sheet parser and a wrapper for mighty SoX utility - http://sox.sourceforge.net/.
 
 SoX with appropriate plugins should be installed for deflacue to function.
 Ubuntu users may install the following SoX packages: `sox`, `libsox-fmt-all`.
 
-
 deflacue can function both as a Python module and in command line mode.
+
 """
 import os
 import logging
-import argparse
 
 from copy import deepcopy
 from collections import defaultdict
@@ -422,50 +420,3 @@ class Deflacue:
         os.chdir(dir_initial)
 
         logging.info('We are done. Thank you.\n')
-
-
-def main():
-
-    argparser = argparse.ArgumentParser('deflacue.py')
-
-    argparser.add_argument('source_path', help='Absolute or relative source path with .cue file(s).')
-    argparser.add_argument(
-        '-r', help='Recursion flag to search directories under the source_path.', action='store_true'
-    )
-    argparser.add_argument('-d', help='Absolute or relative destination path for output audio file(s).')
-    argparser.add_argument('-e', help='Cue Sheet file(s) encoding.')
-    argparser.add_argument(
-        '--dry', help='Perform the dry run with no changes done to filesystem.', action='store_true'
-    )
-    argparser.add_argument('--debug', help='Show debug messages while processing.', action='store_true')
-
-    parsed = argparser.parse_args()
-    kwargs = {'source_path': parsed.source_path}
-
-    if parsed.e is not None:
-        kwargs['encoding'] = parsed.e
-
-    if parsed.d is not None:
-        kwargs['dest_path'] = parsed.d
-
-    if parsed.debug:
-        kwargs['use_logging'] = logging.DEBUG
-
-    try:
-        deflacue = Deflacue(**kwargs)
-
-        if not deflacue.sox_check_is_available():
-            raise DeflacueError(
-                'SoX seems not available. Please install it (e.g. `sudo apt-get install sox libsox-fmt-all`).'
-            )
-
-        if parsed.dry:
-            deflacue.set_dry_run()
-
-        deflacue.do(parsed.r)
-    except DeflacueError as e:
-        logging.error(e)
-
-
-if __name__ == '__main__':
-    main()

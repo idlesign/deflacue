@@ -41,13 +41,15 @@ setup(
 
     setup_requires=[] + (['pytest-runner'] if 'test' in sys.argv else []) + [],
 
+    entry_points={
+        'console_scripts': ['deflacue = deflacue.cli:main'],
+    },
+
     test_suite='tests',
     tests_require=[
         'pytest',
         'pytest-datafixtures',
     ],
-
-    scripts=['bin/deflacue'],
 
     classifiers=[
         'Development Status :: 5 - Production/Stable',
