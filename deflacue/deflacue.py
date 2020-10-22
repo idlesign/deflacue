@@ -16,6 +16,7 @@ from typing import List, Dict
 
 LOGGER = logging.getLogger('deflacue')
 
+"""
 COMMENTS_VORBIS = (
     'TITLE',
     'VERSION',
@@ -31,8 +32,9 @@ COMMENTS_VORBIS = (
     'DATE',
     'LOCATION',
     'CONTACT',
-    'ISRC'
+    'ISRC',
 )
+"""
 
 COMMENTS_CUE_TO_VORBIS = {
     'TRACK_NUM': 'TRACKNUMBER',
@@ -266,9 +268,11 @@ class Deflacue:
 
     def _create_target_path(self, path: str):
         """Creates a directory for target files."""
-        if not self._dry_run:
-            LOGGER.debug(f'Creating target path: {path} ...')
-            os.makedirs(path, exist_ok=True)
+        if self._dry_run:
+            return
+
+        LOGGER.debug(f'Creating target path: {path} ...')
+        os.makedirs(path, exist_ok=True)
 
     def set_dry_run(self):
         """Sets deflacue into dry run mode, when all requested actions
@@ -360,8 +364,9 @@ class Deflacue:
             LOGGER.debug(f'Metadata: {metadata}\n')
 
             for key, val in COMMENTS_CUE_TO_VORBIS.items():
-                if key in metadata and metadata[key] is not None:
-                    add_comment = f'--add-comment="{val}={metadata[key]}" {add_comment}'
+                val_meta = metadata.get(key)
+                if val_meta:
+                    add_comment = f'--add-comment="{val}={val_meta}" {add_comment}'
 
         LOGGER.debug(
             'Extraction information:\n'
@@ -376,8 +381,7 @@ class Deflacue:
             f'trim {pos_start_samples}s {chunk_length_samples}'
         )
 
-        if not self._dry_run:
-            self._process_command(command, stdout=PIPE)
+        self._process_command(command, stdout=PIPE)
 
     def process_cue(self, cue_file: str, target_path: str):
         """Parses .cue file, extracts separate tracks.
@@ -424,7 +428,7 @@ class Deflacue:
         :param recursive: if True .cue search is also performed within subdirectories.
 
         """
-        if self.path_target is not None and not os.path.exists(self.path_target):
+        if self.path_target is not None:
             self._create_target_path(self.path_target)
 
         files_dict = self.filter_target_extensions(self.get_dir_files(recursive=recursive))
