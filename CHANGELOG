@@ -1,6 +1,12 @@
 deflacue changelog
 ==================
 
+
+Unreleased
+----------
+* Drop support for Py2. (3.6+ supported).
+
+
 v1.0.0
 ------
 No changes, except version bumping up.
