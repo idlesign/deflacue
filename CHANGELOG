@@ -2,8 +2,8 @@ deflacue changelog
 ==================
 
 
-Unreleased
-----------
+v2.0.0 [2020-10-24]
+-------------------
 ! IMPORTANT: API changes (keyword-only args introduced).
 + Switched to improved .cue parser.
 * Drop support for Py2 (3.6+ supported).
