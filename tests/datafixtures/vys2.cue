@@ -3,7 +3,9 @@ REM DATE "2020"
 REM COMMENT "Dumped"
 PERFORMER "В. С. Высоцкий"
 TITLE "Пять песен"
+
 FILE "01. Сторона А.flac" WAVE
+
   TRACK 01 AUDIO
     TITLE "01. Песня о погибшем лётчике"
     INDEX 01 00:00:00
@@ -13,6 +15,7 @@ FILE "01. Сторона А.flac" WAVE
 FILE "02. Сторона В.flac" WAVE
   TRACK 03 AUDIO
     TITLE "03. Песня Бродского"
+
     INDEX 01 00:00:00
   TRACK 04 AUDIO
     TITLE "04. Песня о вещей Кассандре"

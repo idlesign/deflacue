@@ -10,33 +10,16 @@ deflacue can function both as a Python module and in command line mode.
 import logging
 import os
 from collections import defaultdict
-from copy import deepcopy
 from pathlib import Path
 from subprocess import Popen, PIPE
 from typing import List, Dict, Union, Optional
 
+from .exceptions import DeflacueError
+from .parser import CueParser
+
 LOGGER = logging.getLogger('deflacue')
 TypePath = Union[str, Path]
 
-"""
-COMMENTS_VORBIS = (
-    'TITLE',
-    'VERSION',
-    'ALBUM',
-    'TRACKNUMBER',
-    'ARTIST',
-    'PERFORMER',
-    'COPYRIGHT',
-    'LICENSE',
-    'ORGANIZATION',
-    'DESCRIPTION',
-    'GENRE',
-    'DATE',
-    'LOCATION',
-    'CONTACT',
-    'ISRC',
-)
-"""
 
 COMMENTS_CUE_TO_VORBIS = {
     'TRACK_NUM': 'TRACKNUMBER',
@@ -45,146 +28,10 @@ COMMENTS_CUE_TO_VORBIS = {
     'ALBUM': 'ALBUM',
     'GENRE': 'GENRE',
     'DATE': 'DATE',
+    'ISRC': 'ISRC',
+    'COMMENT': 'DESCRIPTION',
 }
-
-
-class DeflacueError(Exception):
-    """Exception type raised by deflacue."""
-
-
-class CueParser:
-    """Simple Cue Sheet file parser."""
-
-    def __init__(self, cue_file: Path, *, encoding: str = None):
-        """
-
-        :param cue_file: .cue filepath
-        :param encoding: file encoding
-
-        """
-        self._context_global = {
-            'PERFORMER': 'Unknown',
-            'SONGWRITER': None,
-            'ALBUM': 'Unknown',
-            'GENRE': 'Unknown',
-            'DATE': None,
-            'FILE': None,
-            'COMMENT': None,
-        }
-        self._context_tracks = []
-
-        self._current_context = self._context_global
-
-        try:
-            with open(str(cue_file), encoding=encoding) as f:
-                lines = f.readlines()
-
-        except UnicodeDecodeError:
-            raise DeflacueError(
-                'Unable to read data from .cue file. '
-                'Please use -encoding command line argument to set correct encoding.'
-            )
-
-        for line in lines:
-            line = line.strip()
-
-            if not line:
-                continue
-
-            command, _, args = line.partition(' ')
-
-            LOGGER.debug(f'Command `{command}`. Args: {args}')
-
-            method = getattr(self, f'cmd_{command.lower()}', None)
-
-            if method is None:
-                LOGGER.warning(f'Unknown command `{command}`. Skipping ...')
-
-            else:
-                method(self._unquote(args))
-
-        for idx, track_data in enumerate(self._context_tracks):
-            track_end_pos = None
-
-            try:
-                track_end_pos = self._context_tracks[idx + 1]['POS_START_SAMPLES']
-
-            except IndexError:
-                pass
-
-            track_data['POS_END_SAMPLES'] = track_end_pos
-
-    def get_data_global(self) -> dict:
-        """Returns a dictionary with global CD data."""
-        return self._context_global
-
-    def get_data_tracks(self) -> List[dict]:
-        """Returns a list of dictionaries with individual
-        tracks data. Note that some of the data is borrowed from global data.
-
-        """
-        return self._context_tracks
-
-    @classmethod
-    def _unquote(cls, val: str) -> str:
-        return val.strip(' "')
-
-    def _timestr_to_sec(self, timestr: str) -> int:
-        """Converts `mm:ss:` time string into seconds integer."""
-        splitted = timestr.split(':')[:-1]
-        splitted.reverse()
-        seconds = 0
-        for i, chunk in enumerate(splitted, 0):
-            factor = pow(60, i)
-            if i == 0:
-                factor = 1
-            seconds += int(chunk) * factor
-        return seconds
-
-    def _timestr_to_samples(self, timestr: str) -> int:
-        """Converts `mm:ss:ff` time string into samples integer, assuming the
-        CD sampling rate of 44100Hz.
-
-        """
-        seconds_factor = 44100
-        # 75 frames per second of audio
-        frames_factor = seconds_factor // 75
-        full_seconds = self._timestr_to_sec(timestr)
-        frames = int(timestr.split(':')[-1])
-        return full_seconds * seconds_factor + frames * frames_factor
-
-    def _in_global_context(self) -> bool:
-        return self._current_context == self._context_global
-
-    def cmd_rem(self, args: str):
-        subcommand, _, subargs = args.partition(' ')
-        subargs = self._unquote(subargs)
-        self._current_context[subcommand.upper()] = subargs
-
-    def cmd_performer(self, args: str):
-        self._current_context['PERFORMER'] = args
-
-    def cmd_title(self, args: str):
-        self._current_context['ALBUM' if self._in_global_context() else 'TITLE'] = args
-
-    def cmd_file(self, args: str):
-        filename = self._unquote(args.rsplit(' ', 1)[0])
-        self._current_context['FILE'] = filename
-
-    def cmd_index(self, args: str):
-        timestr = args.split()[1]
-        self._current_context['INDEX'] = timestr
-        self._current_context['POS_START_SAMPLES'] = self._timestr_to_samples(timestr)
-
-    def cmd_track(self, args: str):
-        num, _ = args.split()
-        new_track_context = deepcopy(self._context_global)
-        self._context_tracks.append(new_track_context)
-        self._current_context = new_track_context
-        self._current_context['TRACK_NUM'] = int(num)
-
-    def cmd_flags(self, args):
-        pass
+"""Cue REM commands to Vorbis tags."""
 
 
 class Deflacue:
@@ -396,34 +243,39 @@ class Deflacue:
         """
         LOGGER.info(f'Processing `{cue_file.name}`\n')
 
-        parser = CueParser(cue_file, encoding=self.encoding)
-        cd_info = parser.get_data_global()
+        parser = CueParser.from_file(fpath=cue_file, encoding=self.encoding)
+        cue = parser.run()
 
-        if not os.path.exists(cd_info['FILE']):
-            LOGGER.error(f"Source file `{cd_info['FILE']}` is not found. Cue Sheet is skipped.")
-            return
+        cd_info = cue.meta.data
+        tracks = cue.tracks
 
-        tracks = parser.get_data_tracks()
+        def sanitize(val: str) -> str:
+            return val.replace('/', '')
 
         title = cd_info['ALBUM']
         if cd_info['DATE'] is not None:
             title = f"{cd_info['DATE']} - {title}"
 
-        bundle_path = target_path / cd_info['PERFORMER'] / title
+        bundle_path = target_path / sanitize(cd_info['PERFORMER']) / sanitize(title)
         self._create_target_path(bundle_path)
 
-        tracks_count = len(tracks)
+        len_tracks_count = len(str(len(tracks)))
         for track in tracks:
+            track_file = track.file.path
 
-            track_num = str(track['TRACK_NUM']).rjust(len(str(tracks_count)), '0')
-            filename = f"{track_num} - {track['TITLE'].replace('/', '')}.flac"
+            if not os.path.exists(track_file):
+                LOGGER.error(f'Source file `{track_file}` is not found. Skipped.')
+                continue
+
+            track_num = str(track.num).rjust(len_tracks_count, '0')
+            filename = f"{track_num} - {sanitize(track.title)}.flac"
 
             self.sox_extract_audio(
-                source_file=track['FILE'],
-                pos_start_samples=track['POS_START_SAMPLES'],
-                pos_end_samples=track['POS_END_SAMPLES'],
+                source_file=track_file,
+                pos_start_samples=track.start,
+                pos_end_samples=track.end,
                 target_file=bundle_path / filename,
-                metadata=track
+                metadata=track.data
             )
 
     def do(self, *, recursive: bool = False):
@@ -455,6 +307,7 @@ class Deflacue:
                 target_path = self.path_target / path.name
 
             self._create_target_path(target_path)
+
             LOGGER.info(f'Target (output) path: {target_path}')
 
             for cue in files_dict[path]:

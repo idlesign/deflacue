@@ -1,106 +1,55 @@
 import logging
 from collections import deque
+from pathlib import Path
 
 import pytest
 
-from deflacue.deflacue import CueParser, DeflacueError, Deflacue
+from deflacue.deflacue import CueParser, Deflacue
+from deflacue.exceptions import ParserError
 
 
 class TestParser:
 
     def test_encoding(self, datafix_dir):
 
-        fpath = str(datafix_dir / 'vys2.cue')
+        fpath = datafix_dir / 'vys2.cue'
 
-        with pytest.raises(DeflacueError):
-            CueParser(fpath)
+        with pytest.raises(ParserError):
+            CueParser.from_file(fpath)
 
-        parser = CueParser(fpath, encoding='cp1251')
+        parser = CueParser.from_file(fpath, encoding='cp1251')
+        cue = parser.run()
 
-        data_global = parser.get_data_global()
-        assert data_global == {
+        assert cue.meta.data == {
+            'GENRE': 'Classic',
+            'DATE': '2020',
+            'COMMENT': 'Dumped',
+            'PERFORMER': 'В. С. Высоцкий',
+            'ALBUM': 'Пять песен',
+        }
+
+        assert len(cue.files) == 2
+        assert str(cue.files[0]) == '01. Сторона А.flac'
+
+        assert len(cue.tracks) == 5
+
+        track = cue.tracks[3]
+        assert str(track)
+        assert track.start == 5426064
+        assert track.end == 11205516
+        assert track.data == {
             'ALBUM': 'Пять песен',
             'COMMENT': 'Dumped',
             'DATE': '2020',
-            'FILE': '01. Сторона А.flac',
             'GENRE': 'Classic',
+            'INDEX 01': '02:03:03',
             'PERFORMER': 'В. С. Высоцкий',
-            'SONGWRITER': None
-       }
-
-        data_tracks = parser.get_data_tracks()
-        assert data_tracks == [
-            {
-                'ALBUM': 'Пять песен',
-                'COMMENT': 'Dumped',
-                'DATE': '2020',
-                'FILE': '01. Сторона А.flac',
-                'GENRE': 'Classic',
-                'INDEX': '00:00:00',
-                'PERFORMER': 'В. С. Высоцкий',
-                'POS_END_SAMPLES': 13013028,
-                'POS_START_SAMPLES': 0,
-                'SONGWRITER': None,
-                'TITLE': '01. Песня о погибшем лётчике',
-                'TRACK_NUM': 1
-            },
-            {
-                'ALBUM': 'Пять песен',
-                'COMMENT': 'Dumped',
-                'DATE': '2020',
-                'FILE': '02. Сторона В.flac',  # todo bogus
-                'GENRE': 'Classic',
-                'INDEX': '04:55:06',
-                'PERFORMER': 'В. С. Высоцкий',
-                'POS_END_SAMPLES': 0,
-                'POS_START_SAMPLES': 13013028,
-                'SONGWRITER': None,
-                'TITLE': '02. Дом Хрустальный',
-                'TRACK_NUM': 2
-            },
-            {
-                'ALBUM': 'Пять песен',
-                'COMMENT': 'Dumped',
-                'DATE': '2020',
-                'FILE': '01. Сторона А.flac',  # todo bogus
-                'GENRE': 'Classic',
-                'INDEX': '00:00:00',
-                'PERFORMER': 'В. С. Высоцкий',
-                'POS_END_SAMPLES': 5426064,
-                'POS_START_SAMPLES': 0,
-                'SONGWRITER': None,
-                'TITLE': '03. Песня Бродского',
-                'TRACK_NUM': 3
-            },
-            {
-                'ALBUM': 'Пять песен',
-                'COMMENT': 'Dumped',
-                'DATE': '2020',
-                'FILE': '01. Сторона А.flac',  # todo bogus
-                'GENRE': 'Classic',
-                'INDEX': '02:03:03',
-                'PERFORMER': 'В. С. Высоцкий',
-                'POS_END_SAMPLES': 11205516,
-                'POS_START_SAMPLES': 5426064,
-                'SONGWRITER': None,
-                'TITLE': '04. Песня о вещей Кассандре',
-                'TRACK_NUM': 4
-            },
-            {
-                'ALBUM': 'Пять песен',
-                'COMMENT': 'Dumped',
-                'DATE': '2020',
-                'FILE': '01. Сторона А.flac',  # todo bogus
-                'GENRE': 'Classic',
-                'INDEX': '04:14:07',
-                'PERFORMER': 'В. С. Высоцкий',
-                'POS_END_SAMPLES': None,
-                'POS_START_SAMPLES': 11205516,
-                'SONGWRITER': None,
-                'TITLE': '05. История болезни',
-                'TRACK_NUM': 5
-            }
-        ]
+            'TITLE': '04. Песня о вещей Кассандре'
+        }
+        track = cue.tracks[4]
+        assert track.start == 11205516
+        assert track.end == 0
+        assert track.file.path == Path('02. Сторона В.flac')
 
 
 @pytest.fixture
