@@ -17,7 +17,7 @@ from typing import List, Dict, Union, Optional
 from .exceptions import DeflacueError
 from .parser import CueParser
 
-LOGGER = logging.getLogger('deflacue')
+LOGGER = logging.getLogger(__name__)
 TypePath = Union[str, Path]
 
 
@@ -233,7 +233,7 @@ class Deflacue:
 
         self._process_command(command, stdout=PIPE)
 
-    def process_cue(self, cue_file: Path, target_path: Path):
+    def process_cue(self, *, cue_file: Path, target_path: Path):
         """Parses .cue file, extracts separate tracks.
 
         :param cue_file: .cue filepath
@@ -311,7 +311,7 @@ class Deflacue:
             LOGGER.info(f'Target (output) path: {target_path}')
 
             for cue in files_dict[path]:
-                self.process_cue(path / cue, target_path)
+                self.process_cue(cue_file=path / cue, target_path=target_path)
 
         os.chdir(dir_initial)
 
