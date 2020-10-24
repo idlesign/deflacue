@@ -203,10 +203,10 @@ class Deflacue:
         :param metadata: Additional data (tags) dict.
 
         """
-        LOGGER.info(f'Extracting `{target_file.name}` ...')
+        LOGGER.info(f'  Extracting `{target_file.name}` ...')
 
         chunk_length_samples = ''
-        if pos_end_samples is not None:
+        if pos_end_samples:
             chunk_length_samples = f'{pos_end_samples - pos_start_samples}s'
 
         add_comment = ''
@@ -241,7 +241,7 @@ class Deflacue:
         :param target_path: path to place files into
 
         """
-        LOGGER.info(f'Processing `{cue_file.name}`\n')
+        LOGGER.info(f'\nProcessing `{cue_file.name}`\n')
 
         parser = CueParser.from_file(fpath=cue_file, encoding=self.encoding)
         cue = parser.run()
@@ -263,8 +263,8 @@ class Deflacue:
         for track in tracks:
             track_file = track.file.path
 
-            if not os.path.exists(track_file):
-                LOGGER.error(f'Source file `{track_file}` is not found. Skipped.')
+            if not track_file.exists():
+                LOGGER.error(f'Source file `{track_file}` is not found. Track is skipped.')
                 continue
 
             track_num = str(track.num).rjust(len_tracks_count, '0')
@@ -294,7 +294,7 @@ class Deflacue:
         for path in paths:
             os.chdir(path)
 
-            LOGGER.info(f"\n{'====' * 10}\n      Working on: {path}\n")
+            LOGGER.info(f"\n{'====' * 10}\nWorking on: {path}\n")
 
             if self.path_target is None:
                 # When a target path is not specified, create `deflacue` subdirectory
