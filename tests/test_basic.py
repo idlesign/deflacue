@@ -44,7 +44,8 @@ class TestParser:
             'GENRE': 'Classic',
             'INDEX 01': '02:03:03',
             'PERFORMER': 'В. С. Высоцкий',
-            'TITLE': '04. Песня о вещей Кассандре'
+            'TITLE': '04. Песня о вещей Кассандре',
+            'TRACK_NUM': '4',
         }
         track = cue.tracks[4]
         assert track.start == 11205516
@@ -62,6 +63,7 @@ def sox_mock(monkeypatch):
             self.results = deque()
 
         def process_command(self, command, **kwargs):
+            logging.getLogger('deflacue').debug(f'Executing shell command: {command}')
             self.commands.append(command)
             return 0
 
@@ -75,7 +77,7 @@ class TestDeflacue:
 
     def test_basic(self, datafix_dir, sox_mock, tmp_path, caplog):
 
-        caplog.set_level(logging.INFO, logger='deflacue')
+        caplog.set_level(logging.DEBUG, logger='deflacue')
 
         dest = tmp_path / 'sub'
 
@@ -94,4 +96,7 @@ class TestDeflacue:
         assert len(commands) == 6
 
         assert (dest / 'datafixtures' / 'В. С. Высоцкий' / '2020 - Пять песен').exists()
-        assert 'Extracting `5 - 05. История болезни.flac`' in caplog.text
+        caplog_text = caplog.text
+        assert 'Extracting `5 - 05. История болезни.flac`' in caplog_text
+        assert 'Еще Не Вечер.flac` is not found.' in caplog_text
+        assert '--add-comment="TRACKNUMBER=4"' in caplog_text

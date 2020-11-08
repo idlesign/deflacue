@@ -152,6 +152,7 @@ class CueData:
             num=num,
             dtype=dtype,
         )
+        track_context.add('TRACK_NUM', f'{num}')
         file_context.tracks.append(track_context)
         self._current_context = track_context
         self._current_track = track_context

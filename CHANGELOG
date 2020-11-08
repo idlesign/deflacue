@@ -2,6 +2,11 @@ deflacue changelog
 ==================
 
 
+Unreleased
+----------
+* Fixed regression with missing track numbers in output files (see #2).
+
+
 v2.0.0 [2020-10-24]
 -------------------
 ! IMPORTANT: API changes (keyword-only args introduced).
