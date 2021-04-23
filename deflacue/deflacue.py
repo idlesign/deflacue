@@ -249,8 +249,17 @@ class Deflacue:
         cd_info = cue.meta.data
         tracks = cue.tracks
 
-        def sanitize(val: str) -> str:
-            return val.replace('/', '')
+        def _sanitize(val: str, illegals: tuple) -> str:
+            for i in illegals:
+                val = val.replace(i, '')
+            return val
+
+        if os.name == 'nt':
+            sanitize = lambda x: _sanitize(
+                x, ('<', '>', ':', '"', '/', '\\', '|', '?', '*')
+            ).rstrip(' \t.')
+        else:
+            sanitize = lambda x: _sanitize(x, ('/',))
 
         title = cd_info['ALBUM']
         if cd_info['DATE'] is not None:
