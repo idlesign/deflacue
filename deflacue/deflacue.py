@@ -56,7 +56,8 @@ class Deflacue:
         *,
         dest_path: TypePath = None,
         encoding: str = None,
-        use_logging: int = logging.INFO
+        use_logging: int = logging.INFO,
+        use_bundle_path: bool = False,
     ):
         """Prepares deflacue to for audio processing.
 
@@ -73,6 +74,10 @@ class Deflacue:
             produced by the application are logged with `logging` module.
             Examples: logging.INFO, logging.DEBUG.
 
+        :param use_bundle_path: Whether to create a directory substructure
+            inside dest_path, based on metadata read from the cue file. When set
+            to False, will output split flac files directly to dest_path.
+
         """
         src = Path(source_path).absolute()
         self.path_source: Path = src
@@ -81,6 +86,8 @@ class Deflacue:
 
         if use_logging:
             self._configure_logging(use_logging)
+
+        self.use_bundle_path = use_bundle_path
 
         LOGGER.info(f'Source path: {src}')
 
@@ -255,8 +262,12 @@ class Deflacue:
         title = cd_info['ALBUM']
         if cd_info['DATE'] is not None:
             title = f"{cd_info['DATE']} - {title}"
-
-        bundle_path = target_path / sanitize(cd_info['PERFORMER']) / sanitize(title)
+        
+        if self.use_bundle_path:
+            bundle_path = target_path / sanitize(
+                cd_info['PERFORMER']) / sanitize(title)
+        else:
+            bundle_path = target_path
         self._create_target_path(bundle_path)
 
         len_tracks_count = len(str(len(tracks)))
@@ -302,9 +313,12 @@ class Deflacue:
                 target_path = path / self._target_default
 
             else:
-                # When a target path is specified, we create a subdirectory there
-                # named after the directory we are working on.
-                target_path = self.path_target / path.name
+                if self.use_bundle_path:
+                    # When a target path is specified, we create a subdirectory
+                    # there named after the directory we are working on.
+                    target_path = self.path_target / path.name
+                else:
+                    target_path = self.path_target
 
             self._create_target_path(target_path)
 
