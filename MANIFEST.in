@@ -1,7 +1,0 @@
-include CHANGELOG
-include LICENSE
-include AUTHORS
-include README.rst
-
-recursive-exclude * __pycache__
-recursive-exclude * *.py[co]
