@@ -1,10 +1,7 @@
-deflacue Authors
-================
+# deflacue authors
 
-Created by Igor 'idle sign' Starikov.
+Created by Igor `idle sign` Starikov.
 
+## Contributors
 
-Contributors
-------------
-
-Ondřej Hošek <https://github.com/RavuAlHemio>
+* Ondřej Hošek <https://github.com/RavuAlHemio>

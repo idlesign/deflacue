@@ -63,7 +63,7 @@ def sox_mock(monkeypatch):
             self.results = deque()
 
         def process_command(self, command, **kwargs):
-            logging.getLogger('deflacue').debug(f'Executing shell command: {command}')
+            logging.getLogger('deflacue').debug('Executing shell command: %s', command)
             self.commands.append(command)
             return 0
 

@@ -12,7 +12,7 @@ import os
 from collections import defaultdict
 from pathlib import Path
 from subprocess import Popen, PIPE
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union
 
 from .exceptions import DeflacueError
 from .parser import CueParser
@@ -54,8 +54,8 @@ class Deflacue:
         self,
         source_path: TypePath,
         *,
-        dest_path: TypePath = None,
-        encoding: str = None,
+        dest_path: TypePath | None = None,
+        encoding: str | None = None,
         use_logging: int = logging.INFO
     ):
         """Prepares deflacue to for audio processing.
@@ -76,13 +76,13 @@ class Deflacue:
         """
         src = Path(source_path).absolute()
         self.path_source: Path = src
-        self.path_target: Optional[Path] = dest_path
+        self.path_target: Path | None = dest_path
         self.encoding = encoding
 
         if use_logging:
             self._configure_logging(use_logging)
 
-        LOGGER.info(f'Source path: {src}')
+        LOGGER.info('Source path: %s', src)
 
         if not src.exists():
             raise DeflacueError(f'Path `{src}` is not found.')
@@ -102,7 +102,7 @@ class Deflacue:
         Returns status code.
 
         """
-        LOGGER.debug(f'Executing shell command: {command}')
+        LOGGER.debug('Executing shell command: %s', command)
 
         if not self._dry_run or suppress_dry_run:
             prc = Popen(command, shell=True, stdout=stdout)
@@ -116,13 +116,13 @@ class Deflacue:
         """Switches on logging at given level."""
         logging.basicConfig(level=verbosity_lvl, format='%(levelname)s: %(message)s')
 
-    def _create_target_path(self, path: Optional[Path]):
+    def _create_target_path(self, path: Path | None):
         """Creates a directory for target files."""
         if self._dry_run or not path:
             return
 
-        LOGGER.debug(f'Creating target path: {path} ...')
-        os.makedirs(path, exist_ok=True)
+        LOGGER.debug('Creating target path: %s ...', path)
+        Path(path).mkdir(parents=True, exist_ok=True)
 
     def set_dry_run(self):
         """Sets deflacue into dry run mode, when all requested actions
@@ -137,7 +137,7 @@ class Deflacue:
         :param recursive: if True search is also performed within subdirectories.
 
         """
-        LOGGER.info(f'Enumerating files under the source path (recursive={recursive}) ...')
+        LOGGER.info('Enumerating files under the source path (recursive=%s) ...', recursive)
 
         files = {}
         if recursive:
@@ -188,7 +188,7 @@ class Deflacue:
         pos_start_samples: int,
         pos_end_samples: int,
         target_file: Path,
-        metadata: Dict[str, str] = None
+        metadata: Dict[str, str] | None = None
     ):
         """Using SoX extracts a chunk from source audio file into target.
 
@@ -203,7 +203,7 @@ class Deflacue:
         :param metadata: Additional data (tags) dict.
 
         """
-        LOGGER.info(f'  Extracting `{target_file.name}` ...')
+        LOGGER.info('  Extracting `%s` ...', target_file.name)
 
         chunk_length_samples = ''
         if pos_end_samples:
@@ -211,7 +211,7 @@ class Deflacue:
 
         add_comment = ''
         if metadata is not None:
-            LOGGER.debug(f'Metadata: {metadata}\n')
+            LOGGER.debug('Metadata: %s\n', metadata)
 
             for key, val in COMMENTS_CUE_TO_VORBIS.items():
                 val_meta = metadata.get(key)
@@ -220,10 +220,11 @@ class Deflacue:
 
         LOGGER.debug(
             'Extraction information:\n'
-            f'      Source file: {source_file}\n'
-            f'      Start position: {pos_start_samples} samples\n'
-            f'      End position: {pos_end_samples} samples\n'
-            f'      Length: {chunk_length_samples} sample(s)')
+            '      Source file: %s\n'
+            '      Start position: %s samples\n'
+            '      End position: %s samples\n'
+            '      Length: %s sample(s)',
+            source_file, pos_start_samples, pos_end_samples, chunk_length_samples)
 
         command = (
             f'sox -V1 "{source_file}" '
@@ -241,7 +242,7 @@ class Deflacue:
         :param target_path: path to place files into
 
         """
-        LOGGER.info(f'\nProcessing `{cue_file.name}`\n')
+        LOGGER.info('\nProcessing `%s`\n', cue_file.name)
 
         parser = CueParser.from_file(fpath=cue_file, encoding=self.encoding)
         cue = parser.run()
@@ -264,7 +265,7 @@ class Deflacue:
             track_file = track.file.path
 
             if not track_file.exists():
-                LOGGER.error(f'Source file `{track_file}` is not found. Track is skipped.')
+                LOGGER.error('Source file `%s` is not found. Track is skipped.', track_file)
                 continue
 
             track_num = str(track.num).rjust(len_tracks_count, '0')
@@ -288,13 +289,13 @@ class Deflacue:
 
         files_dict = self.filter_target_extensions(self.get_dir_files(recursive=recursive))
 
-        dir_initial = os.getcwd()
+        dir_initial = Path.cwd()
         paths = sorted(files_dict.keys())
 
         for path in paths:
             os.chdir(path)
 
-            LOGGER.info(f"\n{'====' * 10}\nWorking on: {path}\n")
+            LOGGER.info('\n%s\nWorking on: %s\n', '====' * 10, path)
 
             if self.path_target is None:
                 # When a target path is not specified, create `deflacue` subdirectory
@@ -308,7 +309,7 @@ class Deflacue:
 
             self._create_target_path(target_path)
 
-            LOGGER.info(f'Target (output) path: {target_path}')
+            LOGGER.info('Target (output) path: %s', target_path)
 
             for cue in files_dict[path]:
                 self.process_cue(cue_file=path / cue, target_path=target_path)

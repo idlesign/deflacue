@@ -1,7 +1,7 @@
 import logging
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from .exceptions import ParserError
 
@@ -128,8 +128,8 @@ class CueData:
         self.tracks: List[TrackContext] = []
         """Tracks in image."""
 
-        self._current_file: Optional[FileContext] = None
-        self._current_track: Optional[TrackContext] = None
+        self._current_file: FileContext | None = None
+        self._current_track: TrackContext | None = None
         self._current_context: Context = self.meta
 
     def add_context(self, key, val):
@@ -205,7 +205,7 @@ class CueParser:
         command, _, args = cmd.partition(' ')
         args = self._unquote(args)
 
-        LOGGER.debug(f'Parsed command `{command}`. Args: {args}')
+        LOGGER.debug('Parsed command `%s`. Args: %s', command, args)
 
         return command, args
 
@@ -214,14 +214,14 @@ class CueParser:
         return val.strip(' "')
 
     @classmethod
-    def from_file(cls, fpath: Path, *, encoding: str = None) -> 'CueParser':
+    def from_file(cls, fpath: Path, *, encoding: str | None = None) -> 'CueParser':
 
-        def read(coding: str = None) -> Optional[CueParser]:
+        def read(coding: str | None = None) -> CueParser | None:
 
             try:
-                with open(str(fpath), encoding=coding) as f:
+                with Path(str(fpath)).open(encoding=coding) as f:
                     return CueParser([
-                        line.strip() for line in f.readlines()
+                        line.strip() for line in f
                         if line.strip()
                     ])
 

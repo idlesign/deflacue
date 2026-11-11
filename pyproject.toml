@@ -1,0 +1,78 @@
+[project]
+name = "deflacue"
+dynamic = ["version"]
+description = "SoX based audio splitter to split audio CD images incorporated with .cue files"
+authors = [
+    { name = "Igor Starikov", email = "idlesign@yandex.ru" },
+]
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+keywords = ["cue", "sox", "audio", "flac"]
+dependencies = []
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: BSD License",
+]
+
+[project.urls]
+Homepage = "https://github.com/idlesign/deflacue"
+
+[project.scripts]
+deflacue = "deflacue.cli:main"
+
+[dependency-groups]
+dev = [
+    { include-group = "docs" },
+    { include-group = "linters" },
+    { include-group = "tests" },
+]
+docs = [
+    "mkdocs-apidescribed-plugin",
+    "mkdocs-material",
+    "mkdocs-navsorted-plugin",
+]
+linters = [
+    "ruff==0.13.1",
+]
+tests = [
+    "coverage",
+    "pytest",
+    "pytest-datafixtures",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/deflacue/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deflacue"]
+
+[tool.hatch.build.targets.sdist]
+packages = ["src/"]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+
+[tool.coverage.run]
+source = [
+    "src/deflacue",
+]
+
+[tool.makeapp.tests]
+deps = []
