@@ -2,6 +2,7 @@
 
 ### Unreleased
 * ++ Added delete_source option (--delete-source CLI flag) to remove source audio and .cue files after successful extraction (close #7).
+* ** Target names are now sanitized on Windows: invalid characters, trailing dots and spaces are removed, fixing crashes on names like 'What I Have to Hide...' (close #4).
 
 ### v2.0.1 [2020-11-08]
 * ** Fixed regression with missing track numbers in output files (see #2).
