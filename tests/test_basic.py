@@ -1,6 +1,7 @@
 import logging
 from collections import deque
 from pathlib import Path
+from shutil import copy, copytree
 
 import pytest
 
@@ -65,6 +66,10 @@ def sox_mock(monkeypatch):
         def process_command(self, command, **kwargs):
             logging.getLogger('deflacue').debug('Executing shell command: %s', command)
             self.commands.append(command)
+
+            if self.results:
+                return self.results.popleft()
+
             return 0
 
     mock = SoxMock()
@@ -100,3 +105,65 @@ class TestDeflacue:
         assert 'Extracting `5 - 05. История болезни.flac`' in caplog_text
         assert 'Еще Не Вечер.flac` is not found.' in caplog_text
         assert '--add-comment="TRACKNUMBER=4"' in caplog_text
+
+    def test_delete_source(self, datafix_dir, sox_mock, tmp_path, caplog):
+
+        caplog.set_level(logging.WARNING, logger="deflacue")
+
+        work_dir = tmp_path / "in"
+        copytree(datafix_dir, work_dir)
+
+        deflacue = Deflacue(
+            source_path=str(work_dir),
+            dest_path=str(tmp_path / "out"),
+            encoding="cp1251",
+            delete_source=True,
+        )
+        deflacue.do()
+
+        # vys1.cue references a missing audio file — its sources are kept;
+        # vys2.cue was processed fine — its sources are deleted.
+        assert (work_dir / "vys1.cue").exists()
+        assert not (work_dir / "vys2.cue").exists()
+        assert not (work_dir / "01. Сторона А.flac").exists()
+        assert not (work_dir / "02. Сторона В.flac").exists()
+        assert "Source files are kept" in caplog.text
+
+    def test_delete_source_sox_failure(self, datafix_dir, sox_mock, tmp_path, caplog):
+
+        work_dir = tmp_path / "in"
+        work_dir.mkdir()
+
+        for fname in ("vys2.cue", "01. Сторона А.flac", "02. Сторона В.flac"):
+            copy(datafix_dir / fname, work_dir / fname)
+
+        sox_mock.results.append(1)  # The first extraction fails.
+
+        deflacue = Deflacue(
+            source_path=str(work_dir),
+            dest_path=str(tmp_path / "out"),
+            encoding="cp1251",
+            delete_source=True,
+        )
+        deflacue.do()
+
+        assert (work_dir / "vys2.cue").exists()
+        assert (work_dir / "01. Сторона А.flac").exists()
+        assert "Source files are kept" in caplog.text
+
+    def test_delete_source_dry_run(self, datafix_dir, sox_mock, tmp_path):
+
+        work_dir = tmp_path / "in"
+        copytree(datafix_dir, work_dir)
+
+        deflacue = Deflacue(
+            source_path=str(work_dir),
+            dest_path=str(tmp_path / "out"),
+            encoding="cp1251",
+            delete_source=True,
+        )
+        deflacue.set_dry_run()
+        deflacue.do()
+
+        assert (work_dir / "vys2.cue").exists()
+        assert (work_dir / "01. Сторона А.flac").exists()

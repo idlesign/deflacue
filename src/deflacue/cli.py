@@ -19,6 +19,9 @@ def main():
     argparser.add_argument(
         '--dry', help='Perform the dry run with no changes done to filesystem.', action='store_true')
     argparser.add_argument(
+        '--delete-source', help='Delete source audio and .cue file(s) after successful extraction.',
+        action='store_true')
+    argparser.add_argument(
         '--debug', help='Show debug messages while processing.', action='store_true')
 
     parsed = argparser.parse_args()
@@ -32,6 +35,9 @@ def main():
 
     if parsed.debug:
         kwargs['use_logging'] = logging.DEBUG
+
+    if parsed.delete_source:
+        kwargs['delete_source'] = True
 
     try:
         deflacue = Deflacue(**kwargs)

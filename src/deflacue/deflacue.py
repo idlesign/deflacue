@@ -56,7 +56,8 @@ class Deflacue:
         *,
         dest_path: TypePath | None = None,
         encoding: str | None = None,
-        use_logging: int = logging.INFO
+        use_logging: int = logging.INFO,
+        delete_source: bool = False
     ):
         """Prepares deflacue to for audio processing.
 
@@ -73,11 +74,15 @@ class Deflacue:
             produced by the application are logged with `logging` module.
             Examples: logging.INFO, logging.DEBUG.
 
+        :param delete_source: If True, source audio file(s) and .cue file are deleted
+            after all tracks were extracted successfully.
+
         """
         src = Path(source_path).absolute()
         self.path_source: Path = src
         self.path_target: Path | None = dest_path
         self.encoding = encoding
+        self._delete_source = delete_source
 
         if use_logging:
             self._configure_logging(use_logging)
@@ -189,7 +194,7 @@ class Deflacue:
         pos_end_samples: int,
         target_file: Path,
         metadata: Dict[str, str] | None = None
-    ):
+    ) -> bool:
         """Using SoX extracts a chunk from source audio file into target.
 
         :param source_file: Source audio file path
@@ -201,6 +206,8 @@ class Deflacue:
         :param target_file: Trimmed audio file path
 
         :param metadata: Additional data (tags) dict.
+
+        Returns whether extraction succeeded.
 
         """
         LOGGER.info('  Extracting `%s` ...', target_file.name)
@@ -232,7 +239,7 @@ class Deflacue:
             f'trim {pos_start_samples}s {chunk_length_samples}'
         )
 
-        self._process_command(command, stdout=PIPE)
+        return self._process_command(command, stdout=PIPE) == 0
 
     def process_cue(self, *, cue_file: Path, target_path: Path):
         """Parses .cue file, extracts separate tracks.
@@ -261,23 +268,58 @@ class Deflacue:
         self._create_target_path(bundle_path)
 
         len_tracks_count = len(str(len(tracks)))
+        source_files: set[Path] = set()
+        has_failures = False
+
         for track in tracks:
             track_file = track.file.path
+            source_files.add(track_file)
 
             if not track_file.exists():
                 LOGGER.error('Source file `%s` is not found. Track is skipped.', track_file)
+                has_failures = True
                 continue
 
             track_num = str(track.num).rjust(len_tracks_count, '0')
             filename = f"{track_num} - {sanitize(track.title)}.flac"
 
-            self.sox_extract_audio(
+            extracted = self.sox_extract_audio(
                 source_file=track_file,
                 pos_start_samples=track.start,
                 pos_end_samples=track.end,
                 target_file=bundle_path / filename,
                 metadata=track.data
             )
+
+            if not extracted:
+                has_failures = True
+
+        if self._delete_source:
+            self._delete_source_files(cue_file=cue_file, source_files=source_files, has_failures=has_failures)
+
+    def _delete_source_files(self, *, cue_file: Path, source_files: set[Path], has_failures: bool):
+        """Deletes source audio file(s) and the .cue file after successful processing.
+
+        :param cue_file: .cue filepath
+
+        :param source_files: Audio files referenced by the .cue file
+
+        :param has_failures: Whether some tracks were not extracted
+
+        """
+        if has_failures:
+            LOGGER.warning("Some tracks were not extracted. Source files are kept for: %s", cue_file.name)
+            return
+
+        if self._dry_run:
+            return
+
+        for source_file in sorted(source_files):
+            LOGGER.info("  Deleting `%s` ...", source_file.name)
+            source_file.unlink()
+
+        LOGGER.info("  Deleting `%s` ...", cue_file.name)
+        cue_file.unlink()
 
     def do(self, *, recursive: bool = False):
         """Main method processing .cue files in batch.
