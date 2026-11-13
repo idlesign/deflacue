@@ -9,6 +9,8 @@ deflacue can function both as a Python module and in command line mode.
 """
 import logging
 import os
+import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 from subprocess import Popen, PIPE
@@ -32,6 +34,27 @@ COMMENTS_CUE_TO_VORBIS = {
     'COMMENT': 'DESCRIPTION',
 }
 """Cue REM commands to Vorbis tags."""
+
+RE_NAME_INVALID_WIN = re.compile(r'[<>:"/\\|?*]')
+"""Characters invalid in file and directory names on Windows."""
+
+
+def sanitize_name(value: str) -> str:
+    """Removes characters invalid for the target filesystem from a given file or directory name.
+
+    On Windows also strips characters invalid there, as well as trailing dots
+    and spaces, which are silently pruned by the OS, leading to a mismatch
+    between computed and actually created paths.
+
+    :param value:
+
+    """
+    value = value.replace('/', '')
+
+    if sys.platform == 'win32':
+        value = RE_NAME_INVALID_WIN.sub('', value).rstrip('. ')
+
+    return value
 
 
 class Deflacue:
@@ -257,14 +280,11 @@ class Deflacue:
         cd_info = cue.meta.data
         tracks = cue.tracks
 
-        def sanitize(val: str) -> str:
-            return val.replace('/', '')
-
         title = cd_info['ALBUM']
         if cd_info['DATE'] is not None:
             title = f"{cd_info['DATE']} - {title}"
 
-        bundle_path = target_path / sanitize(cd_info['PERFORMER']) / sanitize(title)
+        bundle_path = target_path / sanitize_name(cd_info['PERFORMER']) / sanitize_name(title)
         self._create_target_path(bundle_path)
 
         len_tracks_count = len(str(len(tracks)))
@@ -281,7 +301,7 @@ class Deflacue:
                 continue
 
             track_num = str(track.num).rjust(len_tracks_count, '0')
-            filename = f"{track_num} - {sanitize(track.title)}.flac"
+            filename = f"{track_num} - {sanitize_name(track.title)}.flac"
 
             extracted = self.sox_extract_audio(
                 source_file=track_file,

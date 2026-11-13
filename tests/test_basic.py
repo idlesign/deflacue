@@ -5,11 +5,21 @@ from shutil import copy, copytree
 
 import pytest
 
-from deflacue.deflacue import CueParser, Deflacue
+from deflacue.deflacue import CueParser, Deflacue, sanitize_name
 from deflacue.exceptions import ParserError
 
 
 class TestParser:
+
+    def test_sanitize_name_posix(self):
+        assert sanitize_name("a/b") == "ab"
+        assert sanitize_name("What I Have to Hide...") == "What I Have to Hide..."
+
+    def test_sanitize_name_windows(self, monkeypatch):
+        monkeypatch.setattr("deflacue.deflacue.sys.platform", "win32")
+
+        assert sanitize_name("What I Have to Hide...") == "What I Have to Hide"
+        assert sanitize_name('a<b>c:d"e/f\\g|h?i*j ') == "abcdefghij"
 
     def test_encoding(self, datafix_dir):
 
