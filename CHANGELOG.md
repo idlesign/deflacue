@@ -1,7 +1,7 @@
 # deflacue changelog
 
 ### Unreleased
-* ** Added delete_source option (--delete-source CLI flag) to remove source audio and .cue files after successful extraction (close #7).
+* ++ Added delete_source option (--delete-source CLI flag) to remove source audio and .cue files after successful extraction (close #7).
 
 ### v2.0.1 [2020-11-08]
 * ** Fixed regression with missing track numbers in output files (see #2).
