@@ -1,15 +1,15 @@
 import logging
+import re
 from collections import deque
 from pathlib import Path
-import re
 from shutil import copy, copytree
-
-RE_TARGET = re.compile(r'"([^"]+)"\s+trim')
 
 import pytest
 
 from deflacue.deflacue import CueParser, Deflacue, sanitize_name
 from deflacue.exceptions import ParserError
+
+RE_TARGET = re.compile(r'"([^"]+)"\s+trim')
 
 
 class TestParser:
