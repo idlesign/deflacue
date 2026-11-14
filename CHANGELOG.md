@@ -2,6 +2,7 @@
 
 ### Unreleased
 * ++ Added delete_source option (--delete-source CLI flag) to remove source audio and .cue files after successful extraction (close #7).
+* ++ Added use_bundle_path option (--no-bundle-path CLI flag) to write output files directly to the target path, without the Artist/Album directory structure (close #6).
 * ** Target names are now sanitized on Windows: invalid characters, trailing dots and spaces are removed, fixing crashes on names like 'What I Have to Hide...' (close #4).
 
 ### v2.0.1 [2020-11-08]
