@@ -22,6 +22,10 @@ def main():
         '--delete-source', help='Delete source audio and .cue file(s) after successful extraction.',
         action='store_true')
     argparser.add_argument(
+        '--no-bundle-path', help='Write output files directly to the target path, '
+                                 'without the Artist/Album directory structure.',
+        action='store_true')
+    argparser.add_argument(
         '--debug', help='Show debug messages while processing.', action='store_true')
 
     parsed = argparser.parse_args()
@@ -38,6 +42,9 @@ def main():
 
     if parsed.delete_source:
         kwargs['delete_source'] = True
+
+    if parsed.no_bundle_path:
+        kwargs['use_bundle_path'] = False
 
     try:
         deflacue = Deflacue(**kwargs)

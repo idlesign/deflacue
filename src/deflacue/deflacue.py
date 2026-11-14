@@ -80,7 +80,8 @@ class Deflacue:
         dest_path: TypePath | None = None,
         encoding: str | None = None,
         use_logging: int = logging.INFO,
-        delete_source: bool = False
+        delete_source: bool = False,
+        use_bundle_path: bool = True
     ):
         """Prepares deflacue to for audio processing.
 
@@ -100,12 +101,16 @@ class Deflacue:
         :param delete_source: If True, source audio file(s) and .cue file are deleted
             after all tracks were extracted successfully.
 
+        :param use_bundle_path: If False, output files are written directly to the target
+            path, without the Artist/Album directory structure.
+
         """
         src = Path(source_path).absolute()
         self.path_source: Path = src
         self.path_target: Path | None = dest_path
         self.encoding = encoding
         self._delete_source = delete_source
+        self._use_bundle_path = use_bundle_path
 
         if use_logging:
             self._configure_logging(use_logging)
@@ -284,7 +289,11 @@ class Deflacue:
         if cd_info['DATE'] is not None:
             title = f"{cd_info['DATE']} - {title}"
 
-        bundle_path = target_path / sanitize_name(cd_info['PERFORMER']) / sanitize_name(title)
+        if self._use_bundle_path:
+            bundle_path = target_path / sanitize_name(cd_info['PERFORMER']) / sanitize_name(title)
+
+        else:
+            bundle_path = target_path
         self._create_target_path(bundle_path)
 
         len_tracks_count = len(str(len(tracks)))
@@ -364,10 +373,13 @@ class Deflacue:
                 # in every directory we are working at.
                 target_path = path / self._target_default
 
-            else:
+            elif self._use_bundle_path:
                 # When a target path is specified, we create a subdirectory there
                 # named after the directory we are working on.
                 target_path = self.path_target / path.name
+
+            else:
+                target_path = self.path_target
 
             self._create_target_path(target_path)
 

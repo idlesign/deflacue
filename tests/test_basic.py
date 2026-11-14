@@ -1,7 +1,10 @@
 import logging
 from collections import deque
 from pathlib import Path
+import re
 from shutil import copy, copytree
+
+RE_TARGET = re.compile(r'"([^"]+)"\s+trim')
 
 import pytest
 
@@ -177,3 +180,21 @@ class TestDeflacue:
 
         assert (work_dir / "vys2.cue").exists()
         assert (work_dir / "01. Сторона А.flac").exists()
+
+    def test_no_bundle_path(self, datafix_dir, sox_mock, tmp_path):
+
+        dest = tmp_path / "out"
+        deflacue = Deflacue(
+            source_path=str(datafix_dir),
+            dest_path=str(dest),
+            encoding="cp1251",
+            use_bundle_path=False,
+        )
+        deflacue.do()
+
+        # sox is mocked, so we check the target paths it was called with:
+        # files should land right in the target directory, without the Artist/Album structure.
+        targets = [RE_TARGET.search(command).group(1) for command in sox_mock.commands if "trim" in command]
+
+        assert targets
+        assert all(Path(target).parent == dest for target in targets)
