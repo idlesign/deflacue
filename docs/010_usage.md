@@ -18,3 +18,9 @@ stored under `/home/idle/audio_raw/` processing Cue Sheet files created using `w
 ```shell
 $ deflacue -e windows-1251 /home/idle/audio_raw/ -d /home/idle/audio_collection/
 ```
+
+Useful options:
+
+* `--delete-source` — delete source audio and .cue file(s) after successful extraction;
+* `--no-bundle-path` — write output files directly to the target path, without the Artist/Album directory structure;
+* `--dry` — dry run with no changes done to the filesystem.
